@@ -969,11 +969,15 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
       function setWalletButtonEnabled(id, enabled, helperText) {
         const btn = document.getElementById(id);
         if (!btn) return;
-        // Keep buttons clickable; if wallet isn't installed, clicking will show an install hint.
-        // Also ensure any previous `disabled` state is cleared.
+        // ALWAYS keep buttons clickable - never disable them.
+        // If wallet isn't installed, clicking will show an install hint via connectWallet().
         btn.disabled = false;
         btn.removeAttribute("disabled");
-        btn.classList.toggle("opacity-40", !enabled);
+        // Remove any opacity/disabled styling - all buttons should be fully visible and clickable
+        btn.classList.remove("opacity-40", "cursor-not-allowed", "opacity-50");
+        btn.style.pointerEvents = "auto";
+        btn.style.cursor = "pointer";
+        btn.style.opacity = "1";
         btn.title = helperText || "";
       }
 
@@ -1070,10 +1074,19 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
         document.getElementById("connect-wallet-btn")?.addEventListener("click", onPrimaryConnectButtonClick);
         document.getElementById("hero-connect-btn")?.addEventListener("click", onPrimaryConnectButtonClick);
         document.getElementById("wallet-btn-phantom")?.addEventListener("click", () => connectWallet("phantom"));
-        document.getElementById("wallet-btn-solflare")?.addEventListener("click", () => connectWallet("solflare"));
+        const solflareBtn = document.getElementById("wallet-btn-solflare");
+        if (solflareBtn) {
+          solflareBtn.addEventListener("click", () => connectWallet("solflare"));
+          // Explicitly ensure Solflare button is always clickable
+          solflareBtn.disabled = false;
+          solflareBtn.removeAttribute("disabled");
+          solflareBtn.style.pointerEvents = "auto";
+          solflareBtn.style.cursor = "pointer";
+          solflareBtn.style.opacity = "1";
+        }
         document.getElementById("wallet-btn-backpack")?.addEventListener("click", () => connectWallet("backpack"));
 
-        // Show availability (disabled buttons if wallet missing)
+        // Show availability (buttons are always clickable, but we show hints)
         refreshWalletAvailability();
         updateConnectButtons();
 
