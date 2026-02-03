@@ -924,6 +924,8 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
       function getSolflareProvider() {
         // Solflare may inject `window.solflare` and/or set flags on `window.solana`.
         const direct = window.solflare;
+        // Some Solflare versions don't set flags consistently; if it looks like a provider, accept it.
+        if (direct && typeof direct.connect === "function" && !direct.isPhantom) return direct;
         if (direct && (direct.isSolflare || direct.isSolflareWallet)) return direct;
 
         const injected = window.solana;
@@ -967,9 +969,11 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
       function setWalletButtonEnabled(id, enabled, helperText) {
         const btn = document.getElementById(id);
         if (!btn) return;
-        btn.disabled = !enabled;
+        // Keep buttons clickable; if wallet isn't installed, clicking will show an install hint.
+        // Also ensure any previous `disabled` state is cleared.
+        btn.disabled = false;
+        btn.removeAttribute("disabled");
         btn.classList.toggle("opacity-40", !enabled);
-        btn.classList.toggle("cursor-not-allowed", !enabled);
         btn.title = helperText || "";
       }
 
