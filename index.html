@@ -922,8 +922,14 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
       }
 
       function getSolflareProvider() {
-        const p = window.solflare || window.solana;
-        return p && (p.isSolflare || p.isSolflareWallet) ? p : null;
+        // Solflare may inject `window.solflare` and/or set flags on `window.solana`.
+        const direct = window.solflare;
+        if (direct && (direct.isSolflare || direct.isSolflareWallet)) return direct;
+
+        const injected = window.solana;
+        if (injected && (injected.isSolflare || injected.isSolflareWallet)) return injected;
+
+        return null;
       }
 
       function getBackpackProvider() {
@@ -968,9 +974,9 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
       }
 
       function refreshWalletAvailability() {
-        setWalletButtonEnabled("wallet-btn-phantom", !!getPhantomProvider(), "Install Phantom extension to use this option.");
-        setWalletButtonEnabled("wallet-btn-solflare", !!getSolflareProvider(), "Install Solflare extension to use this option.");
-        setWalletButtonEnabled("wallet-btn-backpack", !!getBackpackProvider(), "Install Backpack extension to use this option.");
+        setWalletButtonEnabled("wallet-btn-phantom", !!getPhantomProvider(), "Install Phantom extension to use this option. https://phantom.app/");
+        setWalletButtonEnabled("wallet-btn-solflare", !!getSolflareProvider(), "Install Solflare extension to use this option. https://solflare.com/");
+        setWalletButtonEnabled("wallet-btn-backpack", !!getBackpackProvider(), "Install Backpack extension to use this option. https://backpack.app/");
       }
 
       function bindProviderEvents(provider) {
@@ -978,6 +984,13 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
 
         provider.on("connect", () => {
           const pk = provider.publicKey?.toString?.();
+          if (pk) walletState.publicKey = pk;
+          updateConnectButtons();
+        });
+
+        // Some wallets emit account changes (e.g. Solflare)
+        provider.on("accountChanged", (publicKey) => {
+          const pk = publicKey?.toString?.() || provider.publicKey?.toString?.();
           if (pk) walletState.publicKey = pk;
           updateConnectButtons();
         });
@@ -1001,8 +1014,8 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
         const provider = getProviderByName(name);
         if (!provider) {
           if (name === "phantom") setWalletError("Phantom extension not detected. Install it from https://phantom.app/ and refresh.");
-          else if (name === "solflare") setWalletError("Solflare extension not detected. Install it and refresh.");
-          else if (name === "backpack") setWalletError("Backpack extension not detected. Install it and refresh.");
+          else if (name === "solflare") setWalletError("Solflare extension not detected. Install it from https://solflare.com/ and refresh.");
+          else if (name === "backpack") setWalletError("Backpack extension not detected. Install it from https://backpack.app/ and refresh.");
           else setWalletError("Wallet provider not detected.");
           return;
         }
@@ -1070,6 +1083,24 @@ console.log(<span class="text-[#14F195]">'Settled:'</span>, tx.signature);</pre>
             if (pk) {
               walletState.name = "phantom";
               walletState.provider = phantom;
+              walletState.publicKey = pk;
+              updateConnectButtons();
+            }
+          }
+        } catch {
+          // ignore
+        }
+
+        // Attempt silent reconnect (Solflare)
+        try {
+          const solflare = getSolflareProvider();
+          if (solflare?.connect) {
+            bindProviderEvents(solflare);
+            const res = await solflare.connect({ onlyIfTrusted: true });
+            const pk = (res?.publicKey || solflare.publicKey)?.toString?.();
+            if (pk) {
+              walletState.name = "solflare";
+              walletState.provider = solflare;
               walletState.publicKey = pk;
               updateConnectButtons();
             }
